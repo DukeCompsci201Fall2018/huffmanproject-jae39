@@ -61,24 +61,20 @@ public class HuffProcessor {
 			String code = codings[val];
 			out.writeBits(code.length(), Integer.parseInt(code, 2));
 			}
-		String code = codings[PSEUDO_EOF];
-		out.writeBits(code.length(), Integer.parseInt(code,2));
-
-		
+		String eof = codings[PSEUDO_EOF];
+		out.writeBits(eof.length(), Integer.parseInt(eof,2));
 	}
 
 	private void writeHeader(HuffNode root, BitOutputStream out) {
 		if (root == null) return;
-		if (root.myValue == 0) {
-			out.writeBits(1, 0);
-			writeHeader(root.myLeft, out);
-			writeHeader(root.myRight, out);
-		}
-		else {
+		if (root.myLeft == null && root.myRight == null) {
 			out.writeBits(1, 1);
 			out.writeBits(BITS_PER_WORD + 1, root.myValue);
+			return;
 		}
-		
+		out.writeBits(1, 0);
+		writeHeader(root.myLeft, out);
+		writeHeader(root.myRight, out);
 	}
 
 	private String[] makeCodingsFromTree(HuffNode root) {
@@ -90,6 +86,9 @@ public class HuffProcessor {
 	private void helper(HuffNode root, String path, String[] encodings) {
 		// if you get to a leaf, store the path in the right bin in encodings
 		if (root.myLeft == null && root.myRight == null) {
+			if (myDebugLevel > DEBUG_HIGH) {
+				System.out.printf("encoding for %d is %s%n", root.myValue, path);
+			}
 			encodings[root.myValue] = path;
 			return;
 		}
@@ -106,9 +105,13 @@ public class HuffProcessor {
 			if (counts[j] == 0) continue;
 			pq.add(new HuffNode(j, counts[j], null, null));
 		}
+		if (myDebugLevel > DEBUG_HIGH) {
+			System.out.printf("pq created with %d nodes%n",pq.size());
+		}
 
 		// while pq contains multiple nodes, combine smallest two
 		while (pq.size() > 1) {
+			
 			HuffNode left = pq.remove();
 			HuffNode right = pq.remove();
 			HuffNode t = new HuffNode(0, left.myWeight + right.myWeight, left, right);
@@ -127,6 +130,16 @@ public class HuffProcessor {
 			ret[val] += 1;
 		}
 		ret[PSEUDO_EOF] = 1;
+		// if debugging print all counts
+		if (myDebugLevel > DEBUG_HIGH) {
+			for(int i = 0; i < ret.length; i++) {
+				int count = ret[i];
+				if (count != 0) {
+					System.out.print(i+ " ");
+					System.out.println(count);
+				}
+			}				
+		}
 		return ret;
 	}
 
